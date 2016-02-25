@@ -1,5 +1,6 @@
-// Ping a remote server, also uses DHCP and DNS.
-// 2011-06-12 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
+// emoncms.org client
+// evolved from EtherCard "Ping a remote server" example by <jc@wippler.nl>
+// 2016-02-25 lbrmnk http://opensource.org/licenses/mit-license.php
 
 #include <EtherCard.h>
 #include <OneWire.h>
