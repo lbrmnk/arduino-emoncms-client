@@ -8,13 +8,12 @@
 #include "isensor.h"
 #include "dallastempsensor.h"
 #include "pulsecountersensor.h"
-#include "emoncmsconfig.h"
+#include "emoncmsconfig.h" // edit site information here!
 
 #define ETHERCARD_PIN 10
 #define ONEWIREBUS_PIN 8
 #define PULSEINTERRUPT_PIN 2
 #define ETHERCARD_RESET_PIN 5
-
 
 OneWire  ds(ONEWIREBUS_PIN);  // Connect your 1-wire device to pin 8
 DallasTemperature sensors(&ds);
