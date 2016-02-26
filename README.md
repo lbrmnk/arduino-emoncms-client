@@ -1,6 +1,6 @@
 # arduino-emoncms-client
 
-Arduino home automation client for emoncms.org website.
+Arduino heating monitoring client for emoncms.org website.
 
 To run this you will need:
 
