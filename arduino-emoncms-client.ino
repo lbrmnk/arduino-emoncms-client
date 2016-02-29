@@ -35,6 +35,16 @@ ISensor *currentSensor = NULL;
 
 void(* resetFn) (void) = 0;//declare reset funcrtion at address 0
 
+void blinkLed(byte pin, int count, int onDelay, int offDelay) 
+{
+  for (int i = 0; i < count; i++) {
+    digitalWrite(pin, HIGH);
+    delay(onDelay);
+    digitalWrite(pin, LOW);
+    delay(offDelay);
+  }
+}
+
 void addSensor(ISensor *sensor)
 {
   Serial.println(F("adding sensor..."));
@@ -137,8 +147,11 @@ void setup () {
   pinMode(7, OUTPUT);
   pinMode(6, OUTPUT);
 
-  digitalWrite(7, LOW);
-  currentSensor = sensorList;
+  // digitalWrite(7, LOW);
+
+  blinkLed(6, 3, 100, 100);
+  blinkLed(7, 3, 100, 100);
+  currentSensor = NULL;//sensorList;
 }
 
 /****************************** interrupt counter  ****************************/

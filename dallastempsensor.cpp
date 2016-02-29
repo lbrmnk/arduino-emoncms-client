@@ -12,7 +12,10 @@ DallasTempSensor::measure()
 {
   _sensors->requestTemperaturesByIndex(_index);
   _temp = _sensors->getTempCByIndex(_index);
-  return (true);
+  if (_temp > -127) {
+    return true;
+  }
+  return false;
 }
 
 float 
