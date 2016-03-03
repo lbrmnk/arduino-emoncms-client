@@ -64,7 +64,7 @@ StringBuilder::append(unsigned long value) {
 int 
 StringBuilder::append(float value) {
   char tmp[21];
-  sprintf(tmp, "%d.%d", (int)value, (int)(100 * (value - (int)value)));
+  sprintf(tmp, "%d.%02d", (int)value, (int)(100 * (value - (int)value)));
   return append(tmp);    
 }
 

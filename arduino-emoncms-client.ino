@@ -47,7 +47,8 @@ void blinkLed(byte pin, int count, int onDelay, int offDelay)
 
 void addSensor(ISensor *sensor)
 {
-  Serial.println(F("adding sensor..."));
+  Serial.print(F("adding sensor..."));
+  Serial.println(sensor->getId());
   sensor->next = sensorList;
   sensorList = sensor;
 }
