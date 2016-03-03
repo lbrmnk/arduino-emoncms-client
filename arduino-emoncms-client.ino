@@ -131,8 +131,8 @@ void interruptHandler();
 void interruptHandler2();
 
 void setup () {  
-  pinMode(ETHERCARD_RESET_PIN, OUTPUT);
-  digitalWrite(ETHERCARD_RESET_PIN, HIGH);
+  pinMode(ETHERCARD_RESET_PIN, OUTPUT);    // configure eth.module reset pin
+  digitalWrite(ETHERCARD_RESET_PIN, HIGH); // set LOW to reset ethernet module, HIGH for normal operation
 
   Serial.begin(57600);
   Serial.println(F("\n[emoncms.org client]"));
@@ -157,20 +157,26 @@ void setup () {
 
 /****************************** interrupt counter  ****************************/
 
-const int MIN_LOW_TIME = 2000;
-const int MIN_HIGH_TIME = 250;
+const int MIN_LOW_TIME = 2000;  // gas meter - minimum time between pulses
+const int MIN_HIGH_TIME = 250;  // gas meter - minimum pulse duration (for debounce)
 
+// handles interrupt in pin 2 from gas meter, 
+// filters out random signals inducted to wires (like fluor tube on/off)
+//
 void interruptHandler2()
 {
   unsigned long current_time = millis();
   int pin2 = digitalRead(2);
-  digitalWrite(6, pin2);
+  digitalWrite(6, pin2); // signal LED to show current input state
+  
   if (pin2 == HIGH) {
     if ((current_time - last_interrupt_time) > MIN_LOW_TIME) {
+      // pulse start, only if there were MIN_LOW_TIME interval since last pulse
       last_interrupt_time_hi = current_time;
     }
   } else { // LOW
     if (last_interrupt_time_hi != 0 && (current_time - last_interrupt_time_hi) > MIN_HIGH_TIME) {
+      // measure pulse duration, accept only pulse longer than MIN_HIGH_TIME
       last_interrupt_time = current_time;
       pulseCount++;
     }
@@ -178,16 +184,8 @@ void interruptHandler2()
   }
 }
 
-void debounceHandler()
-{
-  unsigned long interrupt_time = millis();
-  // If interrupts come faster than 3000ms, assume it's a bounce and ignore
-  if (interrupt_time - last_interrupt_time > 3000) {
-    last_interrupt_time = interrupt_time;
-    interruptHandler();
-  }
-}
-
+// called after successfull http request
+// updates "lastUpdate" timer to see that website and internet connection is up.
 void
 uploadCallback(byte status, word off, word len) 
 {
@@ -209,13 +207,14 @@ uploadCallback(byte status, word off, word len)
   }
   
   lastUpdate = millis();
-  digitalWrite(7, LOW);
+  digitalWrite(7, LOW); // set upload progress signal LED off
 }
 
 // String query_string;
 char buf[128];
 StringBuilder query_string(buf, sizeof(buf));
 
+// builds URL and sends http request to emoncmd.org website input handler (see input api help http://emoncms.org/input/api)
 int
 uploadSensorValue(ISensor *sensor)
 {
@@ -231,17 +230,10 @@ uploadSensorValue(ISensor *sensor)
   query_string.append(APIKEY);
 
   Serial.println(query_string.c_str());
-  //ether.browseUrl(PSTR("/input/post.json"), query_string.c_str(), website, uploadCallback);
-  
   Serial.print("calling ether.browseUrl() ... ");
  
-  digitalWrite(7, HIGH);
-
-  ether.browseUrl(PSTR("/input/post.json?"), 
-                       query_string.c_str(),  
-                       website, 
-                       uploadCallback);
-  
+  digitalWrite(7, HIGH); // light up LED to show that upload is in progress
+  ether.browseUrl(PSTR("/input/post.json?"), query_string.c_str(), website, uploadCallback);
 }
     
 /****************************** Functions ****************************/
@@ -253,7 +245,8 @@ void loop () {
   
   word len = ether.packetReceive(); // go receive new packets
   word pos = ether.packetLoop(len); // respond to incoming pings
-  
+
+  // handle ping response
   if (len > 0 && ether.packetLoopIcmpCheckReply(ether.gwip)) {
     Serial.print("  ");
     Serial.print((millis() - pingTimer), 3);
@@ -261,32 +254,37 @@ void loop () {
     lastPingReply = millis();
   }
 
+  // debug output for pulse counter
   if (lastCount != pulseCount) {
     Serial.print("pulse ... ");
     Serial.println(pulseCount);
     lastCount = pulseCount;
   }
-  
+
+  // timer for ping test, every 20s
   if (((millis() % 20000) - 10000) == 0) {
     ether.printIp("Pinging: ", ether.gwip);
     pingTimer = millis();
     ether.clientIcmpRequest(ether.gwip);
   }
-  
+
+  // main measure routing, every 20s
   if ((millis() % 20000) == 0) {
 
-    if (currentSensor == NULL) {
-      currentSensor = sensorList;
-    } else {
-      currentSensor = currentSensor->next;    
-    }
+    // fetch first or next sensor
+    currentSensor = (currentSensor == NULL) ?  sensorList : currentSensor->next;    
 
     if (currentSensor != NULL) {
+      // if has any sensor to measure, go on...
         
       Serial.print(F("Requesting sensor: "));
       Serial.print(currentSensor->getId());
       Serial.print(F(" ... "));
+
+      // request sensor value
       if (currentSensor->measure()) {
+
+        // if something measures, than output value to debug windows and upload to website
         Serial.println(currentSensor->getValue());
         uploadSensorValue(currentSensor);
       } else {
@@ -294,11 +292,12 @@ void loop () {
       }
     }
 
-    if (millis() > (lastPingReply + (2L * 60000L)) ||  // 2 minuty bez pingu na branu
-        millis() > (lastUpdate + (15L * 60000L))) {    // 15 minut bez uploadu na web
+    // ensure that network and website is up
+    if (millis() > (lastPingReply + (2L * 60000L)) ||  // no ping to gateway for 2 minutes  or
+        millis() > (lastUpdate + (15L * 60000L))) {    // no upload to website for 15 minutes
       Serial.print("reseting...");
       delay(100);
-      resetFn();
+      resetFn(); // restart arduino
       lastUpdate = millis();
     }
   }
