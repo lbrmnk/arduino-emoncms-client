@@ -19,5 +19,22 @@ Features:
 - Pulses to instant power conversion
 - uses ping to detect ethernet module failure
 
-Arduino pin connections
+Device connections
 
+Enc28j60
+  - CS - pin 10
+  - SI - pin 11
+  - SO - pin 12
+  - SCK - pin 13
+  - VCC - 3.3V
+  - GND - GND
+ 
+Onewire bus
+  - DATA - pin 8 (with parasite power, 5V thru 4k7 resistor)
+  - GND - GND
+ 
+Hall sensor 
+  - VCC - 5V (thru 50ma polyswitch)
+  - GND - GND 
+  - DATA - pin 2 (interrupt)
+ 
