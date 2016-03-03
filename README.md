@@ -34,7 +34,7 @@ Onewire bus
   - GND - GND
  
 Hall sensor 
-  - VCC - 5V (thru 50ma polyswitch)
+  - VCC - 5V (thru 50mA polyswitch)
   - GND - GND 
   - DATA - pin 2 (interrupt)
  
