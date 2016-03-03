@@ -1,4 +1,5 @@
 #include "isensor.h"
+#include <DallasTemperature.h>
 
 class DallasTempSensor : public ISensor 
 {

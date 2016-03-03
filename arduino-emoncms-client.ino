@@ -9,6 +9,9 @@
 #include "isensor.h"
 #include "dallastempsensor.h"
 #include "pulsecountersensor.h"
+#include "utils.h"
+#include "stringbuilder.h"
+
 #include "emoncmsconfig.h" // edit site information here!
 
 #define ETHERCARD_PIN 10

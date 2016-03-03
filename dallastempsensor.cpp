@@ -1,4 +1,5 @@
 #include "dallastempsensor.h"
+#include "utils.h"
 
 DallasTempSensor::DallasTempSensor(DallasTemperature* sensors, int index) 
 {

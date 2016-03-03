@@ -1,4 +1,5 @@
 #include "pulsecountersensor.h"
+#include <stdio.h>
     
 PulseCounterSensor::PulseCounterSensor(int id, volatile uint32_t* counterPtr) 
 {
@@ -71,23 +72,6 @@ PowerPulseCounterSensor::measure()
   _pulseTime = *_lastPulseTimePtr;
 
   return (true);
-
-  /*  
-  Serial.println(F("PowerPulseCounterSensor::measure"));
-  Serial.print(F("_value: "));
-  Serial.println(_value);
-  Serial.print(F("_commitedValue: "));
-  Serial.println(_commitedValue);
-  
-  if ((_value == _commitedValue) ||              // vysilat kdyz: je nula
-      (_value - _commitedValue) >= 5 ||          // peak vic jak 5 pulsu
-      (_pulseTime - _commitedTime) > 3*60*1000L)  // dlouho se nic neposlalo
-  {
-    return (true);
-  }
-  
-  return false;
-  */
 }
 
 void 
