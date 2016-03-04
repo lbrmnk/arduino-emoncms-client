@@ -30,6 +30,7 @@ Enc28j60
   - SCK - pin 13
   - VCC - 3.3V
   - GND - GND
+  - RESET - pin 5 (thru diode, to compensate 3.3V vs 5V)
  
 Onewire bus
   - DATA - pin 8 (with parasite power, 5V thru 4k7 resistor)
@@ -42,7 +43,7 @@ Hall sensor
   - 
 
 LEDs
-  - yellow - pin 5 (pulse on) 
-  - red - pin 5 (upload in progress)
+  - yellow - pin 6 (pulse on) 
+  - red - pin 7 (upload in progress)
 
  
