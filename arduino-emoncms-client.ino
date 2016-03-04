@@ -38,9 +38,9 @@ ISensor *currentSensor = NULL;
 
 void(* resetFn) (void) = 0;//declare reset funcrtion at address 0
 
-void blinkLed(byte pin, int count, int onDelay, int offDelay) 
+void blinkLed(byte pin, int repeat, int onDelay, int offDelay) 
 {
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < repeat; i++) {
     digitalWrite(pin, HIGH);
     delay(onDelay);
     digitalWrite(pin, LOW);
@@ -50,10 +50,12 @@ void blinkLed(byte pin, int count, int onDelay, int offDelay)
 
 void addSensor(ISensor *sensor)
 {
-  Serial.print(F("adding sensor..."));
-  Serial.println(sensor->getId());
-  sensor->next = sensorList;
-  sensorList = sensor;
+  if (sensor != NULL) {
+    Serial.print(F("adding sensor..."));
+    Serial.println(sensor->getId());
+    sensor->next = sensorList;
+    sensorList = sensor;
+  }
 }
 
 // called when a ping comes in (replies to it are automatic)
@@ -115,7 +117,7 @@ void setupOneWire()
 
   // DallasTempSensor::begin(&sensors);
   for (int i = sensorsCount - 1; i >= 0; i--) {
-    addSensor(new DallasTempSensor(&sensors, i));
+    addSensor(DallasTempSensor::create(&sensors, i));
   }
 
   // report parasite power requirements

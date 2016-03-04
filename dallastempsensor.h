@@ -5,11 +5,12 @@ class DallasTempSensor : public ISensor
 {
   public:
     DallasTemperature* _sensors;
-    int _index;
+    DeviceAddress _address;
     float _temp;
     
-    DallasTempSensor(DallasTemperature* sensors, int index);
-
+    DallasTempSensor(DallasTemperature* sensors, DeviceAddress addr);
+    static DallasTempSensor* create(DallasTemperature* sensors, byte index);
+    
     virtual bool measure();
     virtual float getValue();
     virtual char *getId();
