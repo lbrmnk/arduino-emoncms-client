@@ -7,7 +7,7 @@ To run this you will need:
 - Arduino dev board (Arduino UNO R3 or clone)
 - Arduino IDE (http://arduino.cc/en/Main/Software)
 - enc28j60 ethernet module (http://www.instructables.com/id/Add-Ethernet-to-any-Arduino-project-for-less-than-/)
-- hall sensor
+- hall sensor (gas meter pulse reading)
 - ds18b20 digital termometer(s)
 - EtherCard library: https://github.com/jcw/ethercard
 - OneWire library
