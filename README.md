@@ -39,4 +39,10 @@ Hall sensor
   - VCC - 5V (thru 50mA polyswitch)
   - GND - GND 
   - DATA - pin 2 (interrupt)
+  - 
+
+LEDs
+  - yellow - pin 5 (pulse on) 
+  - red - pin 5 (upload in progress)
+
  
