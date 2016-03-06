@@ -6,9 +6,9 @@ To run this you will need:
 
 - Arduino dev board (Arduino UNO R3 or clone)
 - Arduino IDE (http://arduino.cc/en/Main/Software)
-- enc28j60 ethernet module (http://www.instructables.com/id/Add-Ethernet-to-any-Arduino-project-for-less-than-/)
-- hall sensor (gas meter pulse reading)
-- ds18b20 digital termometer(s)
+- ENC28J60 ethernet module (http://www.instructables.com/id/Add-Ethernet-to-any-Arduino-project-for-less-than-/)
+- reed switch or hall sensor (pulse magnet reading, depending on gas meter type)
+- DS18B20 digital termometer(s)
 - EtherCard library: https://github.com/jcw/ethercard
 - OneWire library
 - DallasTemperature library
@@ -16,14 +16,14 @@ To run this you will need:
 
 Features:
 
-- OneWire ds18b20 temperature sensor network
+- OneWire DS18B20 temperature sensor network
 - Pulse counter (gas meter, electricity meter)
 - Pulses to instant power conversion
 - uses ping to detect ethernet module failure
 
 Device connections
 
-Enc28j60
+ENC28J60
   - CS - pin 10
   - SI - pin 11
   - SO - pin 12
@@ -40,6 +40,9 @@ Hall sensor
   - VCC - 5V (thru 50mA polyswitch)
   - GND - GND 
   - DATA - pin 2 (interrupt)
+
+Reed switch
+  - see wiring diagram (like push button: https://www.arduino.cc/en/Tutorial/Button)
 
 LEDs
   - yellow - pin 6 (pulse on) 
