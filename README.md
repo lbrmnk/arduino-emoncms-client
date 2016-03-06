@@ -45,4 +45,7 @@ LEDs
   - yellow - pin 6 (pulse on) 
   - red - pin 7 (upload in progress)
 
- 
+Wiring diagram
+
+ ![alt tag](https://raw.githubusercontent.com/lbrmnk/arduino-emoncms-client/master/wiring_bb.png)
+
