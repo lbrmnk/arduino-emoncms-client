@@ -1,9 +1,35 @@
 // emoncms.org client
-// evolved from EtherCard "Ping a remote server" example by <jc@wippler.nl>
 // 2016-02-25 lbrmnk http://opensource.org/licenses/mit-license.php
 
-#include <EtherCard.h>
-#include <OneWire.h>
+/*---------------------------------------------------------------------------*/
+//
+// ethernet configuration
+// uncomment your configuration
+//
+// #define ETHERNET_TYPE 0 // Wiznet W5100 ethenet shield and Ethernet library
+// #define ETHERNET_TYPE 1 // ENC28J60 and UIPEthernet library
+// #define ETHERNET_TYPE 2 // ENC28J60 and EtherCard library
+
+#define ETHERNET_TYPE 1
+
+//
+/*---------------------------------------------------------------------------*/
+
+// include right ethernet library
+//
+#if ETHERNET_TYPE == 2
+  #define USE_ETHERCARD
+  #include <EtherCard.h>  
+  byte Ethernet::buffer[512];
+#else
+  #if ETHERNET_TYPE == 1
+    #include <UIPEthernet.h>   // ENC28J60 compatibility library
+  #else
+    #include <Ethernet.h>      // Wiznet W5100 ethenet shield
+  #endif
+  EthernetClient client;
+#endif
+
 #include <DallasTemperature.h>
 
 #include "isensor.h"
@@ -26,7 +52,6 @@ const char website[] PROGMEM = WEBSITE; //"emoncms.org";
 
 // ethernet interface mac address, must be unique on the LAN
 static byte mymac[] = { 0x74,0x69,0x69,0x2D,0x30,0x31 }; 
-byte Ethernet::buffer[512];
 
 static volatile uint32_t lastUpdate = 0;
 static volatile uint32_t pulseCount = 0;
@@ -34,7 +59,7 @@ static volatile uint32_t last_interrupt_time_hi = 0;
 static volatile uint32_t last_interrupt_time = 0;
 
 ISensor* sensorList = NULL;
-ISensor *currentSensor = NULL;
+ISensor* currentSensor = NULL;
 
 void(* resetFn) (void) = 0;//declare reset funcrtion at address 0
 
@@ -61,7 +86,9 @@ void addSensor(ISensor *sensor)
 // called when a ping comes in (replies to it are automatic)
 static void gotPinged (byte* ptr) 
 {
+#ifdef USE_ETHERCARD
   ether.printIp(F(">>> ping from: "), ptr);
+#endif
 }
 
 void resetEthernet()
@@ -73,10 +100,12 @@ void resetEthernet()
 }
 
 /****************************** SETUP ****************************/
+
+#ifdef USE_ETHERCARD 
+
 void setupEthernet()
 {
   resetEthernet();
-
   Serial.println(F("setupEthernet() ... begin"));
   
   if (ether.begin(sizeof Ethernet::buffer, mymac, ETHERCARD_PIN) == 0)
@@ -90,19 +119,32 @@ void setupEthernet()
   ether.printIp(F("IP: "), ether.myip);
   ether.printIp(F("GW: "), ether.gwip);
   
-#if 1
-  // use DNS to locate the IP address we want to ping
   if (!ether.dnsLookup(website))
     Serial.println(F("DNS failed"));
-#else
-  ether.parseIp(ether.hisip, "192.168.111.102");
-  // memcpy(ether.hisip, ether.gwip, sizeof(ether.hisip));
-#endif
+
   ether.printIp(F("SRV: "), ether.hisip);
     
   // call this to report others pinging us
   ether.registerPingCallback(gotPinged);
 }
+
+#else 
+
+void setupEthernet()
+{
+  Ethernet.begin(mymac);
+
+  Serial.print(F("localIP: "));
+  Serial.println(Ethernet.localIP());
+  Serial.print(F("subnetMask: "));
+  Serial.println(Ethernet.subnetMask());
+  Serial.print(F("gatewayIP: "));
+  Serial.println(Ethernet.gatewayIP());
+  Serial.print(F("dnsServerIP: "));
+  Serial.println(Ethernet.dnsServerIP());
+}
+#endif
+
 
 void setupOneWire()
 {
@@ -129,10 +171,8 @@ void setupCounters()
 {
   addSensor(new PowerPulseCounterSensor(3, 36000 /*(float)3600000 * 0.01*/, &pulseCount, &last_interrupt_time));  
   addSensor(new DiffPulseCounterSensor(1, &pulseCount));
-  // addSensor(new PulseCounterSensor(2, &pulseCount));
 }
 
-void interruptHandler();
 void interruptHandler2();
 
 void setup () {  
@@ -150,14 +190,13 @@ void setup () {
 
   attachInterrupt(digitalPinToInterrupt(2), interruptHandler2, CHANGE);
   
-  pinMode(7, OUTPUT);
-  pinMode(6, OUTPUT);
+  pinMode(6, OUTPUT); // LED 1
+  pinMode(7, OUTPUT); // LED 2
 
-  // digitalWrite(7, LOW);
-
-  blinkLed(6, 3, 100, 100);
-  blinkLed(7, 3, 100, 100);
-  currentSensor = NULL;//sensorList;
+  blinkLed(6, 3, 100, 100); // test LED 1
+  blinkLed(7, 3, 100, 100); // test LED 2
+  
+  currentSensor = NULL;
 }
 
 /****************************** interrupt counter  ****************************/
@@ -238,7 +277,27 @@ uploadSensorValue(ISensor *sensor)
   Serial.print("calling ether.browseUrl() ... ");
  
   digitalWrite(7, HIGH); // light up LED to show that upload is in progress
+#ifdef USE_ETHERCARD 
   ether.browseUrl(PSTR("/input/post.json?"), query_string.c_str(), website, uploadCallback);
+#else
+  // client.stop();
+  
+  if (client.connected() || client.connect(WEBSITE, 80)) {
+    Serial.println(F("http client connected."));
+    client.print(F("GET /input/post.json?"));
+    client.print(query_string.c_str());
+    client.println(F(" HTTP/1.1"));
+
+    client.print(F("Host: ")); 
+    client.println(WEBSITE);
+    
+    // client.println(F("Connection: close"));
+    client.println(F("Connection: keep-alive"));
+    client.println();
+  } else {
+    Serial.println(F("http connection failed."));
+  }
+#endif
 }
     
 /****************************** Functions ****************************/
@@ -247,7 +306,8 @@ void loop () {
   static uint32_t lastCount = 0;
   static uint32_t pingTimer = 0;
   static uint32_t lastPingReply = 0;
-  
+
+#ifdef USE_ETHERCARD 
   word len = ether.packetReceive(); // go receive new packets
   word pos = ether.packetLoop(len); // respond to incoming pings
 
@@ -258,6 +318,16 @@ void loop () {
     Serial.println(" ms");
     lastPingReply = millis();
   }
+#else 
+  if (client.available()) {
+    digitalWrite(7, LOW);
+    lastUpdate = millis();
+    
+    char c = client.read();
+    Serial.write(c);
+  }
+  lastPingReply = millis();
+#endif
 
   // debug output for pulse counter
   if (lastCount != pulseCount) {
@@ -266,12 +336,14 @@ void loop () {
     lastCount = pulseCount;
   }
 
+#ifdef USE_ETHERCARD 
   // timer for ping test, every 20s
   if (((millis() % 20000) - 10000) == 0) {
     ether.printIp("Pinging: ", ether.gwip);
     pingTimer = millis();
     ether.clientIcmpRequest(ether.gwip);
   }
+#endif
 
   // main measure routing, every 20s
   if ((millis() % 20000) == 0) {

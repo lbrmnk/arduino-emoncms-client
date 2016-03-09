@@ -24,6 +24,7 @@ class Utils {
       bytesToString(tmp, addr, 8);
       Serial.print(tmp);
     }
+
 };
 
 #endif
