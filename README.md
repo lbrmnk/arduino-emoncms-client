@@ -1,4 +1,4 @@
-# arduino-emoncms-client
+# Arduino emoncms.org client
 
 Arduino heating monitoring client for emoncms.org website.
 
