@@ -6,10 +6,14 @@ Arduino heating monitoring client for emoncms.org website.
 
 - Arduino dev board (Arduino UNO R3 or clone)
 - Arduino IDE (http://arduino.cc/en/Main/Software)
-- ENC28J60 ethernet module (http://www.instructables.com/id/Add-Ethernet-to-any-Arduino-project-for-less-than-/)
-- reed switch or hall sensor (pulse magnet reading, depending on gas meter type)
+- ENC28J60 ethernet module or Wiznet W5100 compatible ethernet shield
+- Reed switch or hall sensor (pulse magnet reading, depending on gas meter type)
 - DS18B20 digital termometer(s)
-- EtherCard library: https://github.com/jcw/ethercard
+
+### Libraries
+- EtherCard library (ENC28J60) https://github.com/jcw/ethercard 
+  - or UIPEthernet (ENC28J60) https://github.com/ntruchsess/arduino_uip)
+  - or Ethernet library (Wiznet W5100)
 - OneWire library
 - DallasTemperature library
 - emoncms.org account and API key (http://emoncms.org)
