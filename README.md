@@ -2,7 +2,7 @@
 
 Arduino heating monitoring client for emoncms.org website.
 
-To run this you will need:
+##To run this you will need:
 
 - Arduino dev board (Arduino UNO R3 or clone)
 - Arduino IDE (http://arduino.cc/en/Main/Software)
@@ -14,14 +14,14 @@ To run this you will need:
 - DallasTemperature library
 - emoncms.org account and API key (http://emoncms.org)
 
-Features:
+## Features
 
 - OneWire DS18B20 temperature sensor network
 - Pulse counter (gas meter, electricity meter)
 - Pulses to instant power conversion
 - uses ping to detect ethernet module failure
 
-Device connections
+## Device connections
 
 ENC28J60
   - CS - pin 10
@@ -48,7 +48,7 @@ LEDs
   - yellow - pin 6 (pulse on) 
   - red - pin 7 (upload in progress)
 
-Wiring diagram
+## Wiring diagram
 
  ![alt tag](https://raw.githubusercontent.com/lbrmnk/arduino-emoncms-client/master/wiring_bb.png)
 
