@@ -6,7 +6,8 @@ Arduino heating monitoring client for emoncms.org website.
 
 - Arduino dev board (Arduino UNO R3 or clone)
 - Arduino IDE (http://arduino.cc/en/Main/Software)
-- ENC28J60 ethernet module or Wiznet W5100 compatible ethernet shield
+- ENC28J60 ethernet module 
+  - or Wiznet W5100 compatible ethernet shield
 - Reed switch or hall sensor (pulse magnet reading, depending on gas meter type)
 - DS18B20 digital termometer(s)
 
