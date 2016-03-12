@@ -10,7 +10,7 @@
 // #define ETHERNET_TYPE 1 // ENC28J60 and UIPEthernet library
 // #define ETHERNET_TYPE 2 // ENC28J60 and EtherCard library
 
-#define ETHERNET_TYPE 1
+#define ETHERNET_TYPE 2
 
 //
 /*---------------------------------------------------------------------------*/
@@ -19,13 +19,16 @@
 //
 #if ETHERNET_TYPE == 2
   #define USE_ETHERCARD
+  #define USE_ENC28J60
   #include <EtherCard.h>  
   byte Ethernet::buffer[512];
 #else
   #if ETHERNET_TYPE == 1
+    #define USE_ENC28J60
     #include <UIPEthernet.h>   // ENC28J60 compatibility library
   #else
-    #include <Ethernet.h>      // Wiznet W5100 ethenet shield
+  #define USE_ETHERNETSHIELD
+  #include <Ethernet.h>      // Wiznet W5100 ethenet shield
   #endif
   EthernetClient client;
 #endif
