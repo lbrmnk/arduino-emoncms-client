@@ -1,16 +1,20 @@
 #include "isensor.h"
 #include <DallasTemperature.h>
+#include "utils.h"
 
 class DallasTempSensor : public ISensor 
 {
-  public:
+  protected:
     DallasTemperature* _sensors;
     DeviceAddress _address;
     float _temp;
-    
+
+  public:
+    static DallasTempSensor* createByIndex(DallasTemperature* sensors, byte index);
+    static char* addressToString(DeviceAddress addr);
+
     DallasTempSensor(DallasTemperature* sensors, DeviceAddress addr);
-    static DallasTempSensor* create(DallasTemperature* sensors, byte index);
-    
+
     virtual bool measure();
     virtual float getValue();
     virtual char *getId();

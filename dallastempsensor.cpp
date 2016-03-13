@@ -10,11 +10,17 @@ DallasTempSensor::DallasTempSensor(DallasTemperature* sensors, DeviceAddress add
 }
 
 DallasTempSensor*
-DallasTempSensor::create(DallasTemperature* sensors, byte index)
+DallasTempSensor::createByIndex(DallasTemperature* sensors, byte index)
 {
   DeviceAddress addr;      
   sensors->getAddress(addr, index);
   return new DallasTempSensor(sensors, addr);
+}
+
+ char* 
+DallasTempSensor::addressToString(DeviceAddress addr) {
+  Utils::bytesToString(__id_buffer, addr, 8);
+  return __id_buffer;
 }
 
 bool 
@@ -40,9 +46,6 @@ DallasTempSensor::getValue()
 char *
 DallasTempSensor::getId() 
 {
-  //byte addr[8];      
-  //_sensors->getAddress(addr, _index);
-  Utils::bytesToString(__id_buffer, _address, 8);
-  return __id_buffer;
+  return addressToString(_address);
 }
 

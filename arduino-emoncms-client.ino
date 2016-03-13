@@ -27,8 +27,8 @@
     #define USE_ENC28J60
     #include <UIPEthernet.h>   // ENC28J60 compatibility library
   #else
-  #define USE_ETHERNETSHIELD
-  #include <Ethernet.h>      // Wiznet W5100 ethenet shield
+    #define USE_ETHERNETSHIELD
+    #include <Ethernet.h>      // Wiznet W5100 ethenet shield
   #endif
   EthernetClient client;
 #endif
@@ -76,14 +76,34 @@ void blinkLed(byte pin, int repeat, int onDelay, int offDelay)
   }
 }
 
-void addSensor(ISensor *sensor)
+ISensor* findSensor(const char* sensorId)
 {
+  ISensor *tmp = sensorList;
+  while (tmp != NULL) {
+    if (strcmp(sensorId, tmp->getId()) == 0) { 
+      return tmp;
+    }
+    tmp = tmp->next;
+  }
+  return NULL;
+}
+
+bool addSensor(ISensor *sensor)
+{
+  char sensorId[32];
   if (sensor != NULL) {
+    strcpy(sensorId, sensor->getId());
+    ISensor *existingSensor = findSensor(sensorId);    
+    
+
     Serial.print(F("adding sensor..."));
-    Serial.println(sensor->getId());
+    Serial.println(sensorId);
     sensor->next = sensorList;
     sensorList = sensor;
+
+    return true;
   }
+  return false;
 }
 
 // called when a ping comes in (replies to it are automatic)
@@ -149,6 +169,9 @@ void setupEthernet()
 #endif
 
 
+// scans for 1wire devices.
+// can be called multiple times.
+//
 void setupOneWire()
 {
   sensors.begin();
@@ -160,9 +183,17 @@ void setupOneWire()
   Serial.print(sensorsCount, DEC);
   Serial.println(F(" devices."));
 
-  // DallasTempSensor::begin(&sensors);
-  for (int i = sensorsCount - 1; i >= 0; i--) {
-    addSensor(DallasTempSensor::create(&sensors, i));
+  DeviceAddress addr;
+  while(ds.search(addr)) {
+    if (OneWire::crc8( addr, 7) == addr[7]) { // check crc to ensure valid address before adding to sensorList
+      char sensorId[20];
+      strcpy(sensorId, DallasTempSensor::addressToString(addr));
+      if (findSensor(sensorId) == NULL) {
+        addSensor(new DallasTempSensor(&sensors, addr));
+      }
+    } else {
+      Serial.print("CRC is not valid!\n");
+    }    
   }
 
   // report parasite power requirements
