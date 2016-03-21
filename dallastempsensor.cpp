@@ -17,10 +17,15 @@ DallasTempSensor::createByIndex(DallasTemperature* sensors, byte index)
   return new DallasTempSensor(sensors, addr);
 }
 
- char* 
+char* 
 DallasTempSensor::addressToString(DeviceAddress addr) {
-  Utils::bytesToString(__id_buffer, addr, 8);
-  return __id_buffer;
+  return addressToString(__id_buffer, addr);
+}
+
+char* 
+DallasTempSensor::addressToString(char * buf, DeviceAddress addr) {
+  Utils::bytesToString(buf, addr, 8);
+  return buf;
 }
 
 bool 

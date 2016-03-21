@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "stringbuilder.h"
 
     
@@ -64,7 +65,7 @@ StringBuilder::append(unsigned long value) {
 int 
 StringBuilder::append(float value) {
   char tmp[21];
-  sprintf(tmp, "%d.%02d", (int)value, (int)(100 * (value - (int)value)));
+  dtostrf(value, 4, 2, tmp);
   return append(tmp);    
 }
 

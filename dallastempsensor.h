@@ -12,6 +12,7 @@ class DallasTempSensor : public ISensor
   public:
     static DallasTempSensor* createByIndex(DallasTemperature* sensors, byte index);
     static char* addressToString(DeviceAddress addr);
+    static char* addressToString(char *buf, DeviceAddress addr);
 
     DallasTempSensor(DallasTemperature* sensors, DeviceAddress addr);
 

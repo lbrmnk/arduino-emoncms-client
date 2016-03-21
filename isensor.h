@@ -2,6 +2,7 @@
 #define __ISENSOR_H__
 
 #include <stdint.h>
+#include <string.h>
 
 // common interface for any sensor
 // 
@@ -32,6 +33,20 @@ class ISensor
 
     // returs sensor unique name
     virtual char *getId() = 0;
+
+    static char *getBuffer() { return __id_buffer; }
+};
+
+class Sensor : public ISensor 
+{
+  public:
+    float _value;
+
+    void setValue(float value) { _value = value; }
+    float getValue() { return _value; }
+
+    void setId(char *id) { strncpy(__id_buffer, id, sizeof(__id_buffer)); }
+    virtual char *getId() { return __id_buffer; }
 };
 
 

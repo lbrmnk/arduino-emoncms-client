@@ -40,6 +40,7 @@
 #include "pulsecountersensor.h"
 #include "utils.h"
 #include "stringbuilder.h"
+#include "receiver433.h"
 
 #include "emoncmsconfig.h" // edit site information here!
 
@@ -47,9 +48,11 @@
 #define ONEWIREBUS_PIN 8
 #define PULSEINTERRUPT_PIN 2
 #define ETHERCARD_RESET_PIN 5
+#define RECEIVER_PIN 3
 
 OneWire  ds(ONEWIREBUS_PIN);  // Connect your 1-wire device to pin 8
 DallasTemperature sensors(&ds);
+Receiver433 rx;
 
 const char website[] PROGMEM = WEBSITE; //"emoncms.org";
 
@@ -63,6 +66,7 @@ static volatile uint32_t last_interrupt_time = 0;
 
 ISensor* sensorList = NULL;
 ISensor* currentSensor = NULL;
+ISensor* commitSensor = NULL;
 
 void(* resetFn) (void) = 0;//declare reset funcrtion at address 0
 
@@ -88,22 +92,15 @@ ISensor* findSensor(const char* sensorId)
   return NULL;
 }
 
-bool addSensor(ISensor *sensor)
+void addSensor(ISensor *sensor)
 {
   char sensorId[32];
   if (sensor != NULL) {
-    strcpy(sensorId, sensor->getId());
-    ISensor *existingSensor = findSensor(sensorId);    
-    
-
     Serial.print(F("adding sensor..."));
-    Serial.println(sensorId);
+    Serial.println(sensor->getId());
     sensor->next = sensorList;
     sensorList = sensor;
-
-    return true;
   }
-  return false;
 }
 
 // called when a ping comes in (replies to it are automatic)
@@ -175,24 +172,17 @@ void setupEthernet()
 void setupOneWire()
 {
   sensors.begin();
-  int sensorsCount = sensors.getDeviceCount();
-    
-  // locate devices on the bus
-  Serial.print(F("Locating devices..."));
-  Serial.print(F("Found "));
-  Serial.print(sensorsCount, DEC);
-  Serial.println(F(" devices."));
 
   DeviceAddress addr;
   while(ds.search(addr)) {
-    if (OneWire::crc8( addr, 7) == addr[7]) { // check crc to ensure valid address before adding to sensorList
+    if (OneWire::crc8(addr, 7) == addr[7]) { // check crc to ensure valid address before adding to sensorList
       char sensorId[20];
-      strcpy(sensorId, DallasTempSensor::addressToString(addr));
+      DallasTempSensor::addressToString(sensorId, addr);
       if (findSensor(sensorId) == NULL) {
         addSensor(new DallasTempSensor(&sensors, addr));
       }
     } else {
-      Serial.print("CRC is not valid!\n");
+      Serial.println(F("CRC is not valid!"));
     }    
   }
 
@@ -210,6 +200,8 @@ void setupCounters()
 void interruptHandler2();
 
 void setup () {  
+  rx.begin(RECEIVER_PIN);
+  
   pinMode(ETHERCARD_RESET_PIN, OUTPUT);    // configure eth.module reset pin
   digitalWrite(ETHERCARD_RESET_PIN, HIGH); // set LOW to reset ethernet module, HIGH for normal operation
 
@@ -278,10 +270,10 @@ uploadCallback(byte status, word off, word len)
   Serial.print((const char*) Ethernet::buffer + off);
   Serial.println("...");
   */
-  if (currentSensor != NULL) {
+  if (commitSensor != NULL) {
     Serial.print(F("commiting sensor: "));
-    Serial.println(currentSensor->getId());
-    currentSensor->commit();
+    Serial.println(commitSensor->getId());
+    commitSensor->commit();
   }
   
   lastUpdate = millis();
@@ -311,6 +303,8 @@ uploadSensorValue(ISensor *sensor)
   Serial.print("calling ether.browseUrl() ... ");
  
   digitalWrite(7, HIGH); // light up LED to show that upload is in progress
+  commitSensor = sensor;
+
 #ifdef USE_ETHERCARD 
   ether.browseUrl(PSTR("/input/post.json?"), query_string.c_str(), website, uploadCallback);
 #else
@@ -336,6 +330,8 @@ uploadSensorValue(ISensor *sensor)
     
 /****************************** Functions ****************************/
 
+Sensor rxSensor;
+
 void loop () {
   static uint32_t lastCount = 0;
   static uint32_t pingTimer = 0;
@@ -344,6 +340,18 @@ void loop () {
 #ifdef USE_ETHERCARD 
   word len = ether.packetReceive(); // go receive new packets
   word pos = ether.packetLoop(len); // respond to incoming pings
+
+  // handle 433 wireless sensors.
+  if (rx.receive()) {
+    float temp = rx.decodeTemp();
+    if (temp > -50 && temp < 50) {
+      char buf[8];
+      sprintf(buf, "rf_%d", rx.getBitCount());
+      rxSensor.setId(buf);
+      rxSensor.setValue(temp);
+      uploadSensorValue(&rxSensor);
+    }
+  }
 
   // handle ping response
   if (len > 0 && ether.packetLoopIcmpCheckReply(ether.gwip)) {
@@ -382,9 +390,6 @@ void loop () {
   // main measure routing, every 20s
   if ((millis() % 20000) == 0) {
 
-    // fetch first or next sensor
-    currentSensor = (currentSensor == NULL) ?  sensorList : currentSensor->next;    
-
     if (currentSensor != NULL) {
       // if has any sensor to measure, go on...
         
@@ -394,13 +399,16 @@ void loop () {
 
       // request sensor value
       if (currentSensor->measure()) {
-
-        // if something measures, than output value to debug windows and upload to website
+        // when a valid measure, then output value to website
         Serial.println(currentSensor->getValue());
         uploadSensorValue(currentSensor);
       } else {
         Serial.println(F("false")); 
       }
+
+      currentSensor = currentSensor->next;    
+    } else {
+      currentSensor = sensorList;    
     }
 
     // ensure that network and website is up
