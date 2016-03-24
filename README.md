@@ -10,6 +10,9 @@ Arduino heating monitoring client for emoncms.org website.
   - or Wiznet W5100 compatible ethernet shield
 - Reed switch or hall sensor (pulse magnet reading, depending on gas meter type)
 - DS18B20 digital termometer(s)
+- Optional:
+  - 433 MHz RF receiver
+  - 433 wireless temperature sensor 
 
 ### Libraries
 - EtherCard library (ENC28J60) https://github.com/jcw/ethercard 
