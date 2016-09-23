@@ -59,4 +59,8 @@ LEDs
 ## Wiring diagram
 
  ![alt tag](https://raw.githubusercontent.com/lbrmnk/arduino-emoncms-client/master/wiring_bb.png)
+ 
+## Sample emoncms screenshot
+ 
+ ![alt tag](https://raw.githubusercontent.com/lbrmnk/arduino-emoncms-client/master/emoncms-sample.png)
 
