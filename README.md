@@ -64,3 +64,4 @@ LEDs
  
  ![alt tag](https://raw.githubusercontent.com/lbrmnk/arduino-emoncms-client/master/emoncms-sample.png)
 
+ ![alt tag](https://raw.githubusercontent.com/lbrmnk/arduino-emoncms-client/master/complete_device_with_lcd.jpg)
