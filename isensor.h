@@ -31,6 +31,8 @@ class ISensor
     // return measures value
     virtual float getValue() { return 0; }
 
+    virtual int measureAsync() { return -1; }
+
     // returs sensor unique name
     virtual char *getId() = 0;
 
@@ -48,8 +50,5 @@ class Sensor : public ISensor
     void setId(char *id) { strncpy(__id_buffer, id, sizeof(__id_buffer)); }
     virtual char *getId() { return __id_buffer; }
 };
-
-
-//DallasTemperature* DallasTempSensor::_sensors;
 
 #endif

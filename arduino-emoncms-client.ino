@@ -1,5 +1,6 @@
-// emoncms.org client
-// 2016-02-25 lbrmnk http://opensource.org/licenses/mit-license.php
+// Ardiono emoncms.org client
+// author: lbrmnk, 2016
+// http://opensource.org/licenses/mit-license.php
 
 /*---------------------------------------------------------------------------*/
 //
@@ -12,16 +13,21 @@
 
 #define ETHERNET_TYPE 2
 
+#define LED_YELLOW    6
+#define LED_RED       7
 //
 /*---------------------------------------------------------------------------*/
 
 // include right ethernet library
 //
+
 #if ETHERNET_TYPE == 2
   #define USE_ETHERCARD
   #define USE_ENC28J60
   #include <EtherCard.h>  
-  byte Ethernet::buffer[512];
+
+  #define ETHERNET_BUFSIZE 512
+  byte Ethernet::buffer[ETHERNET_BUFSIZE];
 #else
   #if ETHERNET_TYPE == 1
     #define USE_ENC28J60
@@ -34,6 +40,7 @@
 #endif
 
 #include <DallasTemperature.h>
+#include <LiquidCrystal.h>
 
 #include "isensor.h"
 #include "dallastempsensor.h"
@@ -41,18 +48,26 @@
 #include "utils.h"
 #include "stringbuilder.h"
 #include "receiver433.h"
+#include "dht11sensor.h"
 
 #include "emoncmsconfig.h" // edit site information here!
 
 #define ETHERCARD_PIN 10
 #define ONEWIREBUS_PIN 8
+#define ONEWIREBUS2_PIN 4
 #define PULSEINTERRUPT_PIN 2
 #define ETHERCARD_RESET_PIN 5
-#define RECEIVER_PIN 3
+#define RECEIVER_PIN 9
 
 OneWire  ds(ONEWIREBUS_PIN);  // Connect your 1-wire device to pin 8
+OneWire  ds2(ONEWIREBUS2_PIN);  // Connect your 1-wire device to pin 8
+
 DallasTemperature sensors(&ds);
+DallasTemperature sensors2(&ds2);
+
 Receiver433 rx;
+LiquidCrystal lcd(A5, A4, A3, A2, A1, A0);
+
 
 const char website[] PROGMEM = WEBSITE; //"emoncms.org";
 
@@ -67,6 +82,8 @@ static volatile uint32_t last_interrupt_time = 0;
 ISensor* sensorList = NULL;
 ISensor* currentSensor = NULL;
 ISensor* commitSensor = NULL;
+int      sensorCount = 0;
+int      sensorPeriod = 20000;
 
 void(* resetFn) (void) = 0;//declare reset funcrtion at address 0
 
@@ -100,6 +117,8 @@ void addSensor(ISensor *sensor)
     Serial.println(sensor->getId());
     sensor->next = sensorList;
     sensorList = sensor;
+
+    sensorCount++;
   }
 }
 
@@ -113,10 +132,12 @@ static void gotPinged (byte* ptr)
 
 void resetEthernet()
 {
+  Serial.print("reseting ethenet module... ");
   digitalWrite(ETHERCARD_RESET_PIN, LOW);
-  delay(1);
+  delay(250);
   digitalWrite(ETHERCARD_RESET_PIN, HIGH);
-  delay(50);
+  delay(250);
+  Serial.println("DONE");
 }
 
 /****************************** SETUP ****************************/
@@ -127,9 +148,13 @@ void setupEthernet()
 {
   resetEthernet();
   Serial.println(F("setupEthernet() ... begin"));
-  
-  if (ether.begin(sizeof Ethernet::buffer, mymac, ETHERCARD_PIN) == 0)
+
+  digitalWrite(LED_RED, HIGH);
+
+  if (ether.begin(sizeof Ethernet::buffer, mymac, ETHERCARD_PIN) == 0) {
     Serial.println(F("Failed to access Ethernet controller"));
+    resetFn();
+  }
      
   Serial.println(F("setupEthernet() ... dhcp"));
   
@@ -146,6 +171,8 @@ void setupEthernet()
     
   // call this to report others pinging us
   ether.registerPingCallback(gotPinged);
+
+  digitalWrite(LED_RED, LOW);
 }
 
 #else 
@@ -169,8 +196,9 @@ void setupEthernet()
 // scans for 1wire devices.
 // can be called multiple times.
 //
-void setupOneWire()
+int setupOneWire(DallasTemperature& sensors, OneWire& ds)
 {
+  int count = 0;
   sensors.begin();
 
   DeviceAddress addr;
@@ -180,15 +208,26 @@ void setupOneWire()
       DallasTempSensor::addressToString(sensorId, addr);
       if (findSensor(sensorId) == NULL) {
         addSensor(new DallasTempSensor(&sensors, addr));
+        count++;
       }
     } else {
       Serial.println(F("CRC is not valid!"));
     }    
   }
 
+  blinkLed(6, count, 100, 350);
+
   // report parasite power requirements
   Serial.print(F("Parasite power is: ")); 
   Serial.println(sensors.isParasitePowerMode() ? F("ON") : F("OFF"));
+
+  return count;
+}
+
+void setupDHT()
+{
+  DHT11HumiditySensor *dht = new DHT11HumiditySensor(4);
+  addSensor(dht);
 }
 
 void setupCounters()
@@ -197,32 +236,100 @@ void setupCounters()
   addSensor(new DiffPulseCounterSensor(1, &pulseCount));
 }
 
+void setupLeds()
+{
+  pinMode(LED_YELLOW, OUTPUT); // LED 1
+  pinMode(LED_RED, OUTPUT); // LED 2
+
+  digitalWrite(LED_YELLOW, HIGH);
+  digitalWrite(LED_RED, HIGH);
+
+  delay(500);
+
+  digitalWrite(LED_YELLOW, LOW);
+  digitalWrite(LED_RED, LOW);
+
+  delay(500);
+}
+
+
 void interruptHandler2();
 
-void setup () {  
-  rx.begin(RECEIVER_PIN);
+void setupOneWireLCD(DallasTemperature& sensors, OneWire& ds)
+{
+    lcd.setCursor(0, 1);
+    lcd.print(F("1wire..         "));
+    int owDevCount = setupOneWire(sensors, ds);
+    lcd.setCursor(8, 1);
+    lcd.print(owDevCount);
+    lcd.print(F("devs"));
+}
+
+void setup() {  
+  Serial.begin(115200);
+  Serial.println(F("\n[emoncms.org client]"));
   
   pinMode(ETHERCARD_RESET_PIN, OUTPUT);    // configure eth.module reset pin
   digitalWrite(ETHERCARD_RESET_PIN, HIGH); // set LOW to reset ethernet module, HIGH for normal operation
 
-  Serial.begin(57600);
-  Serial.println(F("\n[emoncms.org client]"));
+  lcd.begin(16, 2);
+  lcd.print(F("emoncms client"));
+  lcd.display();
 
-  setupEthernet();
+  lcd.setCursor(0, 1);
+  lcd.print(F("setup leds        "));
+  setupLeds();
+
+  //setupDHT();
+  lcd.setCursor(0, 1);
+  lcd.print(F("setup counters.."));
   setupCounters();
-  setupOneWire();
 
+  setupOneWireLCD(sensors, ds);
+  delay(2000);
+  setupOneWireLCD(sensors2, ds2);
+  delay(2000);
+
+  //for (int i = 0; i < 2; i++) {
+  //}
+
+  lcd.setCursor(0, 1);
+  lcd.print(F("setup ethernet    "));
+  setupEthernet();
+  
+  lcd.setCursor(0, 1);
+  for (int i = 0; i < 3; i++) {
+    lcd.print(ether.myip[i]);
+    lcd.print('.');
+  }
+  lcd.print(ether.myip[3]);
+  delay(2000);
+
+  rx.begin(RECEIVER_PIN);
+  
+  delay(1500);
+  
   lastUpdate = millis();
 
   attachInterrupt(digitalPinToInterrupt(2), interruptHandler2, CHANGE);
   
-  pinMode(6, OUTPUT); // LED 1
-  pinMode(7, OUTPUT); // LED 2
-
-  blinkLed(6, 3, 100, 100); // test LED 1
-  blinkLed(7, 3, 100, 100); // test LED 2
-  
   currentSensor = NULL;
+
+  sensorPeriod = 1000 * (140 / (sensorCount + 1));
+
+  Serial.print(F("Sensor count: "));
+  Serial.print(sensorCount);
+  Serial.print(F("Sensor Period: "));
+  Serial.print(sensorPeriod);
+  
+  lcd.setCursor(0, 1);
+  lcd.print(F("Period...       "));
+  lcd.setCursor(10, 1);
+  lcd.print(sensorPeriod);
+  delay(1500);
+  
+  lcd.setCursor(0, 1);
+  lcd.print(F("running...      "));
 }
 
 /****************************** interrupt counter  ****************************/
@@ -254,6 +361,24 @@ void interruptHandler2()
   }
 }
 
+void led_show_dashboard(const char* data, word len)
+{
+  int i = 4;
+  while (i < len) {
+    if (strncmp(data + i - 4, "\r\n\r\n", 4) == 0) {
+      Serial.print(F("led_show_dashboard: "));      
+      Serial.println(data + i);
+
+      lcd.clear();
+      lcd.print(data + i);
+      lcd.setCursor(0, 1);
+      lcd.print(data + i + 16);
+      break;
+    }
+    i++;
+  }
+}
+
 // called after successfull http request
 // updates "lastUpdate" timer to see that website and internet connection is up.
 void
@@ -262,14 +387,16 @@ uploadCallback(byte status, word off, word len)
   Serial.println(F("uploadCallback initiated"));
   Serial.print(F("Status: ")); Serial.println(status);
 
+  Ethernet::buffer[ETHERNET_BUFSIZE - 1] = 0;
   /*
   Serial.print("off   : "); Serial.println(off);
   Serial.print("len   : "); Serial.println(len);
   Serial.println(">>>");
-  Ethernet::buffer[off+300] = 0;
   Serial.print((const char*) Ethernet::buffer + off);
   Serial.println("...");
   */
+  led_show_dashboard((const char*) Ethernet::buffer + off, len);
+    
   if (commitSensor != NULL) {
     Serial.print(F("commiting sensor: "));
     Serial.println(commitSensor->getId());
@@ -283,6 +410,7 @@ uploadCallback(byte status, word off, word len)
 // String query_string;
 char buf[128];
 StringBuilder query_string(buf, sizeof(buf));
+
 
 // builds URL and sends http request to emoncmd.org website input handler (see input api help http://emoncms.org/input/api)
 int
@@ -299,6 +427,13 @@ uploadSensorValue(ISensor *sensor)
   query_string.append("%7D&apikey=");
   query_string.append(APIKEY);
 
+  /*
+  lcd.clear();
+  lcd.print(sensor->getId());
+  lcd.setCursor(0, 1);
+  lcd.print(sensor->getValue());
+  */
+
   Serial.println(query_string.c_str());
   Serial.print("calling ether.browseUrl() ... ");
  
@@ -306,7 +441,8 @@ uploadSensorValue(ISensor *sensor)
   commitSensor = sensor;
 
 #ifdef USE_ETHERCARD 
-  ether.browseUrl(PSTR("/input/post.json?"), query_string.c_str(), website, uploadCallback);
+  // ether.browseUrl(PSTR("/input/post.json?"), query_string.c_str(), website, uploadCallback);
+  ether.browseUrl(PSTR("/input-dash.php?"), query_string.c_str(), website, uploadCallback);
 #else
   // client.stop();
   
@@ -380,7 +516,7 @@ void loop () {
 
 #ifdef USE_ETHERCARD 
   // timer for ping test, every 20s
-  if (((millis() % 20000) - 10000) == 0) {
+  if (((millis() % sensorPeriod) - sensorPeriod/2) == 0) {
     ether.printIp("Pinging: ", ether.gwip);
     pingTimer = millis();
     ether.clientIcmpRequest(ether.gwip);
@@ -388,7 +524,7 @@ void loop () {
 #endif
 
   // main measure routing, every 20s
-  if ((millis() % 20000) == 0) {
+  if ((millis() % sensorPeriod) == 0) {
 
     if (currentSensor != NULL) {
       // if has any sensor to measure, go on...

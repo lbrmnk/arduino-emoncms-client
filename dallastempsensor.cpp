@@ -7,6 +7,7 @@ DallasTempSensor::DallasTempSensor(DallasTemperature* sensors, DeviceAddress add
   _temp = 0;
 
   memcpy(_address, addr, sizeof(DeviceAddress));
+  sensors->setResolution(addr, 12);
 }
 
 DallasTempSensor*
@@ -34,7 +35,7 @@ DallasTempSensor::measure()
   // _sensors->requestTemperaturesByIndex(_index);
   if (_sensors->requestTemperaturesByAddress(_address)) {
     int raw = _sensors->getTemp(_address);
-    if (raw != DEVICE_DISCONNECTED_RAW) {
+    if (raw != DEVICE_DISCONNECTED_RAW && raw != 0x2A80 /* 85 C error */) {
       _temp = DallasTemperature::rawToCelsius(raw);
       return true;
     }
